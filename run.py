@@ -2,8 +2,14 @@
 # -*- coding: utf8 -*-
 
 import RPi.GPIO as GPIO
-import MFRC522
+import mfrc522.MFRC522 as MFRC522
 import signal
+import json
+from util import *
+
+
+TYPE_ADMIN = 'admin'
+TYPE_USER = 'user'
 
 continue_reading = True
 
@@ -14,48 +20,41 @@ def end_read(signal,frame):
     continue_reading = False
     GPIO.cleanup()
 
+
 # Hook the SIGINT
 signal.signal(signal.SIGINT, end_read)
 
 # Create an object of the class MFRC522
 MIFAREReader = MFRC522.MFRC522()
 
-# Welcome message
-print "Welcome to the MFRC522 data read example"
-print "Press Ctrl-C to stop."
+id_file = open("ids.txt")
+ids = json.loads(id_file.read())
+#{tag_id: [password, account type]}
 
 # This loop keeps checking for chips. If one is near it will get the UID and authenticate
 while continue_reading:
     
     # Scan for cards    
     (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL)
-
-    # If a card is found
-    if status == MIFAREReader.MI_OK:
-        print "Card detected"
     
     # Get the UID of the card
     (status,uid) = MIFAREReader.MFRC522_Anticoll()
 
     # If we have the UID, continue
     if status == MIFAREReader.MI_OK:
-
         # Print UID
-        print "Card read UID: "+str(uid[0])+","+str(uid[1])+","+str(uid[2])+","+str(uid[3])
-    
-        # This is the default key for authentication
-        key = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
-        
-        # Select the scanned tag
-        MIFAREReader.MFRC522_SelectTag(uid)
+        uid_str = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]])
+        print "Card id: " + uid_str
 
-        # Authenticate
-        status = MIFAREReader.MFRC522_Auth(MIFAREReader.PICC_AUTHENT1A, 8, key, uid)
-
-        # Check if authenticated
-        if status == MIFAREReader.MI_OK:
-            MIFAREReader.MFRC522_Read(8)
-            MIFAREReader.MFRC522_StopCrypto1()
+        if uid_str in ids:
+            print "Digite a senha: "
+            senha = read_input()
+            if senha == ids[uid_str][0]:
+                print "{} autenticado".format(ids[uid_str][1])
+            else:
+                print "Senha incorreta"
         else:
-            print "Authentication error"
+            print "Cartão não cadastrado"
+
+
 
