@@ -174,14 +174,14 @@ def getch():
         return ch
     return _getch()
 
-lcd = i2c_lcd(0x27,1, 2, 1, 0, 4, 5, 6, 7, 3)
-lcd.backLightOn()
-lcd.command(lcd.CMD_Display_Control | lcd.OPT_Enable_Display)
-while True:
-    i = getch()
-    if i.isalpha():
-        lcd.writeChar(i)
-    if i == '\r':
-        sys.exit()
-    
 
+if __name__ == "__main__":
+  lcd = i2c_lcd(0x27,1, 2, 1, 0, 4, 5, 6, 7, 3)
+  lcd.backLightOn()
+  lcd.command(lcd.CMD_Display_Control | lcd.OPT_Enable_Display)
+  while True:
+      i = getch()
+      if i.isalpha():
+          lcd.writeChar(i)
+      if i == '\r':
+          sys.exit()

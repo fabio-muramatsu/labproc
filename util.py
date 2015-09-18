@@ -11,15 +11,3 @@ def getch():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
     return _getch()
-
-def read_input():
-    '''
-    Lê uma entrada do usuário até que ele digite ENTER
-    '''
-    c = getch()
-    s = ''
-    while c != '\r':
-        s += c
-        c = getch()
-        #Faz alguma coisa a cada pressionamento de tecla
-    return s
