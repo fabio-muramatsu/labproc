@@ -4,12 +4,15 @@
 import RPi.GPIO as GPIO
 import mfrc522.MFRC522 as MFRC522
 import signal
-import json, time
+import json, time, threading
 from display import i2c_lcd
 from util import write_display, read_input
 
 TYPE_ADMIN = 'admin'
 TYPE_USER = 'user'
+
+#Objeto timer definido em escopo global
+t = None
 
 # Capture SIGINT for cleanup when the script is aborted
 def end_read(signal,frame):
@@ -17,6 +20,24 @@ def end_read(signal,frame):
     print "Ctrl+C captured, ending read."
     continue_reading = False
     GPIO.cleanup()
+
+#Escreve as opções do administrador
+def write_admin_options(options_set, lcd):
+    global t
+
+    if options_set == 0:
+        lcd.clear()
+        lcd.writeString('Digite a opcao:')
+
+    if options_set%2 == 0:
+        lcd.setPosition(2,0)
+        lcd.writeString('1:Cadastrar us.')
+    if options_set%2 == 1:
+        lcd.setPosition(2,0)
+        lcd.writeString('2: Remover us. ')
+
+    t = threading.Timer(2, write_admin_options, args=((options_set+1),lcd))
+    t.start()
 
 if __name__ == "__main__":
 
@@ -72,7 +93,19 @@ if __name__ == "__main__":
                     #Administrador
                     elif ids[uid_str][1] == TYPE_ADMIN:
                         write_display(lcd, "admin")
-                        #Cadsastro de novo cartão
+                        t = threading.Timer(2, write_admin_options, args=(0,lcd))
+                        t.start()
+                        option = input()
+                        t.cancel()
+
+                        if option == 1:
+                            write_display(lcd,'Cadastro')
+                            #TODO
+                        elif option == 2:
+                            write_display(lcd,'Remocao')
+                            #TODO
+                        else:
+                            write_display(lcd,'Opcao inexistente')
 
                         time.sleep(1)
                         write_display(lcd, "Aproxime o cartao")
