@@ -100,10 +100,39 @@ if __name__ == "__main__":
 
                         if option == 1:
                             write_display(lcd,'Cadastro')
-                            #TODO
+                            time.sleep(1)
+                            write_display (lcd,'Aproxime novo cartao')
+                            (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL) #realiza leitura
+                            if status == MIFAREReader.MI_OK: #se achou cartao
+                                 uid_str = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]]) #pega ID do novo cartao
+                                 write_display (lcd,'Digite nova senha: ')
+                                 senha = input()
+                                 time.sleep(1)
+                                 write_display (lcd,'Digite de novo a senha: ')
+                                 senha2 = input()
+                                 if(senha == senha2): #checagem para evitar erros
+                                    write_display (lcd,'Digite seu CPF')
+                                    cpf = input()
+                                    ids.update({uid_str:(senha,TYPE_USER,cpf)}) #cadastra no dict
+                                    id_file = open("ids.txt","r+")
+                                    json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
+                                    write_display (lcd,'Cadastro realizado.')
+                                 else:
+                                    write_display (lcd,'Falha no cadastro.')
                         elif option == 2:
-                            write_display(lcd,'Remocao')
-                            #TODO
+                            write_display(lcd,'Digite CPF a ser removido')
+                            cpf = input()
+                            flag = False
+                            for key in ids: #varre dicionario
+                                if (ids[key][2]==cpf): #deleta entrada correspondente a esse cpf
+                                    del ids[key]
+                                    flag= True #achou
+                            if(flag):
+                                id_file = open("ids.txt","r+")
+                                json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
+                                write_display (lcd,'Registros Atualizados')
+                            else:
+                                write_display (lcd,'CPF não encontrado')
                         else:
                             write_display(lcd,'Opcao inexistente')
 
