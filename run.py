@@ -102,33 +102,43 @@ if __name__ == "__main__":
                             write_display(lcd,'Cadastro')
                             time.sleep(1)
                             write_display (lcd,'Aproxime novo cartao')
-                            (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL) #realiza leitura
-                            if status == MIFAREReader.MI_OK: #se achou cartao
-                                 uid_str = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]]) #pega ID do novo cartao
-                                 write_display (lcd,'Digite nova senha: ')
-                                 senha = input()
-                                 time.sleep(1)
-                                 write_display (lcd,'Digite de novo a senha: ')
-                                 senha2 = input()
-                                 if(senha == senha2): #checagem para evitar erros
-                                    write_display (lcd,'Digite seu CPF')
-                                    cpf = input()
-                                    ids.update({uid_str:(senha,TYPE_USER,cpf)}) #cadastra no dict
-                                    id_file = open("ids.txt","r+")
-                                    json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
-                                    write_display (lcd,'Cadastro realizado.')
-                                 else:
-                                    write_display (lcd,'Falha no cadastro.')
+                            leu_novo_cartao = False
+                            while not leu_novo_cartao:
+                                (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL) #realiza leitura
+                                if status == MIFAREReader.MI_OK: #se achou cartao
+                                    (status,uid) = MIFAREReader.MFRC522_Anticoll()
+                                    if status == MIFAREReader.MI_OK:
+                                        leu_novo_cartao = True
+                                        uid_str = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]]) #pega ID do novo cartao
+                                        if uid_str in ids:
+                                            write_display(lcd,"Cartao ja cadastrado")
+                                            break
+                                        write_display (lcd,'Digite nova senha: ')
+                                        senha = raw_input()
+                                        time.sleep(1)
+                                        write_display (lcd,'Digite de novo a senha: ')
+                                        senha2 = raw_input()
+                                        if(senha == senha2): #checagem para evitar erros
+                                            write_display (lcd,'Digite seu CPF')
+                                            cpf = raw_input()
+                                            ids.update({uid_str:(str(senha),TYPE_USER,cpf)}) #cadastra no dict
+                                            id_file = open("ids.txt","w")
+                                            json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
+                                            print ids
+                                            write_display (lcd,'Cadastro realizado.')
+                                        else:
+                                            write_display (lcd,'Falha no cadastro.')
                         elif option == 2:
                             write_display(lcd,'Digite CPF a ser removido')
-                            cpf = input()
-                            flag = False
+                            cpf = raw_input()
+                            flag = 0
                             for key in ids: #varre dicionario
-                                if (ids[key][2]==cpf): #deleta entrada correspondente a esse cpf
-                                    del ids[key]
-                                    flag= True #achou
+                                if ids[key][1] == 'user' and (ids[key][2]==cpf): #deleta entrada correspondente a esse cpf
+                                    flag= key #achou
+                                    break
                             if(flag):
-                                id_file = open("ids.txt","r+")
+                                del ids[flag]
+                                id_file = open("ids.txt","w")
                                 json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
                                 write_display (lcd,'Registros Atualizados')
                             else:
