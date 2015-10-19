@@ -3,10 +3,10 @@
 
 import RPi.GPIO as GPIO
 import mfrc522.MFRC522 as MFRC522
-import signal
-import json, time, threading
+import signal, datetime
+import json, time, threading, Queue
 from display import i2c_lcd
-from util import write_display, read_input
+from util import write_display, read_input, notification_daemon
 
 TYPE_ADMIN = 'admin'
 TYPE_USER = 'user'
@@ -53,10 +53,23 @@ if __name__ == "__main__":
     # Create an object of the class MFRC522
     MIFAREReader = MFRC522.MFRC522()
 
+    # Lê credenciais dos usuários
+    #{tag_id: [password, account type, CPF, panic_password]}
     id_file = open("ids.txt")
     ids = json.loads(id_file.read())
-    #{tag_id: [password, account type]}
     id_file.close()
+
+    # Lê os destinatários das mensagens de emergência
+    to_list = []
+    notification_dest_file = open("notification_dest.txt", "r")
+    for dest in notification_dest_file:
+        to_list.append(dest)
+    notification_dest_file.close()
+    #Inicia o thread de envio de notificações
+    q = Queue.Queue(10)
+    bot_token = "132003418:AAH1QdnJyhVmOVY3_MJ4hKD1fqm_2ABocag"
+    notification_thread = threading.Thread(target = notification_daemon, args=(bot_token, q, to_list))
+    notification_thread.start()
 
     write_display(lcd, "Aproxime o cartao")
     # This loop keeps checking for chips. If one is near it will get the UID and authenticate
@@ -99,16 +112,14 @@ if __name__ == "__main__":
                         t.cancel()
 
                         if option == 1:
-                            write_display(lcd,'Cadastro')
-                            time.sleep(1)
                             write_display (lcd,'Aproxime novo cartao')
-                            leu_novo_cartao = False
-                            while not leu_novo_cartao:
-                                (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL) #realiza leitura
-                                if status == MIFAREReader.MI_OK: #se achou cartao
-                                    (status,uid) = MIFAREReader.MFRC522_Anticoll()
-                                    if status == MIFAREReader.MI_OK:
-                                        leu_novo_cartao = True
+                            read_new_card = False
+                            while not read_new_card:
+                                (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL) 
+                                if status == MIFAREReader.MI_OK: 
+                                    (status,uid) = MIFAREReader.MFRC522_Anticoll() 
+                                    if status == MIFAREReader.MI_OK: 
+                                        read_new_card = True
                                         uid_str = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]]) #pega ID do novo cartao
                                         if uid_str in ids:
                                             write_display(lcd,"Cartao ja cadastrado")
@@ -151,6 +162,10 @@ if __name__ == "__main__":
 
                 #Se a senha digitada for incorreta, notifica o usuário, e aguarda nova leitura        
                 else:
+                    #FIXME: simular senha de pânico como sendo uma senha incorreta
+                    msg = "{} - Senha de pânico inserida - CPF: {}".format(
+                        datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ids[uid_str][2])
+                    q.put(msg)
                     write_display(lcd, "Senha incorreta")
                     time.sleep(3)
                     write_display(lcd, "Aproxime o cartao")

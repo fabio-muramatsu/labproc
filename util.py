@@ -1,4 +1,6 @@
 # -*- coding: utf8 -*-
+import Queue
+import time, requests
 
 def getch():
     import termios
@@ -52,3 +54,38 @@ def read_input(lcd):
             s += c
             lcd.writeChar('*')
     return s
+
+def notification_daemon(bot_token, q, to_list):
+    '''
+        Função de envio de notificação
+        Deve ser executada em um thread dedicado para não bloquear o principal
+    '''
+    pending_notifications = []
+    while True:
+        #Obtém as notificações do thread principal
+        while True:
+            try:
+                msg = q.get(True, 0.2)
+                pending_notifications.append(msg)
+            except Queue.Empty:
+                break
+
+        while len(pending_notifications) > 0:
+            print "Sending notification"
+            notification = pending_notifications[0]
+            error = False
+            for to in to_list:
+                url = 'https://api.telegram.org/bot{}/sendMessage?text={}&chat_id={}'.format(
+                    bot_token, notification, to)
+                try:
+                    requests.get(url)
+                except requests.exceptions.ConnectionError:
+                    #Não foi possível conectar, tente mais tarde
+                    error = True
+                    break
+            if not error:
+                pending_notifications.pop(0)
+            else:
+                break
+
+        time.sleep(5)
