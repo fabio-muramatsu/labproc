@@ -3,6 +3,10 @@ import os.path
 import sys
 import time
 
+requests_log = logging.getLogger("requests")
+requests_log.addHandler(logging.NullHandler())
+requests_log.propagate = False
+
 LOG_FILENAME = "log/operative_log.log"
 
 UNKNOWN_USER = "(null)"

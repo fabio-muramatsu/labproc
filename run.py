@@ -7,9 +7,14 @@ import signal, datetime
 import json, time, threading, Queue
 from display import i2c_lcd
 from util import write_display, read_input, notification_daemon
+from llogger import LLogger
+
+log = LLogger()
 
 TYPE_ADMIN = 'admin'
 TYPE_USER = 'user'
+
+SECURITY_CODE = '70'
 
 #Objeto timer definido em escopo global
 t = None
@@ -92,12 +97,25 @@ if __name__ == "__main__":
                 lcd.setPosition(2,0)
                 password = read_input(lcd)
                 #Se a senha digitada corresponde ao cartão, checa o tipo de usuário
-                if password == ids[uid_str][0]:
+                if password == ids[uid_str][0] \
+                    or password == (ids[uid_str][0] + SECURITY_CODE):
+                    
+                    if password == (ids[uid_str][0] + SECURITY_CODE):
+                        log.panic(uid_str)
+                        if ids[uid_str][1] == TYPE_USER:
+                            msg = "{} - Senha de pânico inserida - CPF: {}".format(
+                                datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ids[uid_str][2])
+                        else:
+                            msg = "{} - Senha de pânico inserida - ADMIN".format(
+                                datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                        q.put(msg)
+
                     print "{} autenticado".format(ids[uid_str][1])
 
                     #Usuário comum
                     if ids[uid_str][1] == TYPE_USER:
                         write_display(lcd, "Autorizado")
+                        log.access(uid_str)
                         #Sinal de abertura
                         time.sleep(1)
 
@@ -105,6 +123,7 @@ if __name__ == "__main__":
 
                     #Administrador
                     elif ids[uid_str][1] == TYPE_ADMIN:
+                        log.admin(uid_str)
                         write_display(lcd, "admin")
                         t = threading.Timer(2, write_admin_options, args=(0,lcd))
                         t.start()
@@ -120,9 +139,10 @@ if __name__ == "__main__":
                                     (status,uid) = MIFAREReader.MFRC522_Anticoll() 
                                     if status == MIFAREReader.MI_OK: 
                                         read_new_card = True
-                                        uid_str = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]]) #pega ID do novo cartao
-                                        if uid_str in ids:
+                                        uid_str2 = '.'.join([str(id_byte).zfill(3) for id_byte in uid[:4]]) #pega ID do novo cartao
+                                        if uid_str2 in ids:
                                             write_display(lcd,"Cartao ja cadastrado")
+                                            log.user_ins_error(uid_str, uid_str2, "user already exists");
                                             break
                                         write_display (lcd,'Digite nova senha: ')
                                         senha = raw_input()
@@ -132,13 +152,15 @@ if __name__ == "__main__":
                                         if(senha == senha2): #checagem para evitar erros
                                             write_display (lcd,'Digite seu CPF')
                                             cpf = raw_input()
-                                            ids.update({uid_str:(str(senha),TYPE_USER,cpf)}) #cadastra no dict
+                                            ids.update({uid_str2:(str(senha),TYPE_USER,cpf)}) #cadastra no dict
                                             id_file = open("ids.txt","w")
                                             json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
-                                            print ids
+                                            id_file.close()
                                             write_display (lcd,'Cadastro realizado.')
+                                            log.user_ins(uid_str, uid_str2)
                                         else:
                                             write_display (lcd,'Falha no cadastro.')
+                                            log.user_ins_error(uid_str, uid_str2, "system error");
                         elif option == 2:
                             write_display(lcd,'Digite CPF a ser removido')
                             cpf = raw_input()
@@ -148,31 +170,33 @@ if __name__ == "__main__":
                                     flag= key #achou
                                     break
                             if(flag):
+                                log.user_del(uid_str, ids[flag])
                                 del ids[flag]
                                 id_file = open("ids.txt","w")
                                 json.dump(ids,id_file) #atualiza arquivo com novo objeto JSON
+                                id_file.close()
                                 write_display (lcd,'Registros Atualizados')
                             else:
+                                log.user_del_error(uid_str, cpf, "user with specified CPF not found")
                                 write_display (lcd,'CPF não encontrado')
                         else:
                             write_display(lcd,'Opcao inexistente')
+                            log.invalid_op(uid_str)
 
                         time.sleep(1)
                         write_display(lcd, "Aproxime o cartao")
 
-                #Se a senha digitada for incorreta, notifica o usuário, e aguarda nova leitura        
+                #Se a senha digitada for incorreta, notifica o usuário, e aguarda nova leitura  
                 else:
-                    #FIXME: simular senha de pânico como sendo uma senha incorreta
-                    msg = "{} - Senha de pânico inserida - CPF: {}".format(
-                        datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), ids[uid_str][2])
-                    q.put(msg)
                     write_display(lcd, "Senha incorreta")
+                    log.psw_error(uid_str)
                     time.sleep(3)
                     write_display(lcd, "Aproxime o cartao")
             
             #Se o cartão apresentado não for reconhecido, notifica o usuário e aguarda nova leitura
             else:
                 write_display(lcd, "Cartao nao cadastrado")
+                log.unknown_id(uid_str)
                 time.sleep(3)
                 write_display(lcd, "Aproxime o cartao")
 
