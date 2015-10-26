@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Control Panel</title>
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script type="application/javascript" src="jquery.js"></script>
+	</head>
+	<body>
+        
+        <h1>Control Panel</h1>
+
+        <div id="login_content">
+            <form id="login" name="login" method="post">
+                <input type='text' name='user' placeholder="username" />
+                <br /><input type='password' name='psw' placeholder="password" />
+                <br /><input type='submit' value='login' />
+            </form>
+            <p id='login_message'></p>
+        </div>
+
+        <div id="menu_content" style="display: none">
+            <button id='menu_log'>Load log</button>
+            <br/><button id='menu_exit'>Exit</button>
+        </div>
+
+        <div id="log_content" style="display: none">
+            <button id='back'>Back to menu</button> 
+            <pre id='log_wrapper'></pre>          
+        </div>
+
+	</body>
+
+    <script type="application/javascript" src="init.js"></script>
+</html>
