@@ -7,11 +7,9 @@ $('form#login').submit(function(e)
 	user = $('form#login input[name="user"]').val();
 	password = $('form#login input[name="psw"]').val();
 
-	var loc = window.location;
-
 	$.ajax({
 		type: "POST",
-		url: loc.host + ":8080",
+		url: "http://" + window.location.host + ":8080",
 		crossDomain: true,
 		data: { u: user, p: password }
 	}).done(function(r){
