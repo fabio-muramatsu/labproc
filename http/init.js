@@ -6,8 +6,13 @@ $('form#login').submit(function(e)
 {
 	user = $('form#login input[name="user"]').val();
 	password = $('form#login input[name="psw"]').val();
-	
-	$.post( "http://127.0.0.1:8080", { u: user, p: password }, function(r){
+
+	$.ajax({
+		type: "POST",
+		url: "http://192.168.0.216:8080",
+		crossDomain: true,
+		data: { u: user, p: password }
+	}).done(function(r){
 
 		log = r;
 
