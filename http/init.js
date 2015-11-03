@@ -52,3 +52,23 @@ $("#back").on("click",function(){
 	$("#menu_content").show();
 	$("#log_content").hide();
 });
+
+$("#reload").on("click",function(){
+	$.ajax({
+		type: "POST",
+		url: "http://" + window.location.host + ":8080",
+		crossDomain: true,
+		data: { u: user, p: password }
+	}).done(function(r){
+
+		log = r;
+		$("#log_wrapper").html(log);
+
+	}).fail(function(r){
+		user = '';
+		password = '';
+		$("#login_message").html("Attention, authentication error");
+		$("#menu_content").hide();
+		$("#log_content").hide();
+	});
+});
